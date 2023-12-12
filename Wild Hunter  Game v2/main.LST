@@ -1,0 +1,466 @@
+C51 COMPILER V9.52.0.0   MAIN                                                              12/09/2023 09:11:33 PAGE 1   
+
+
+C51 COMPILER V9.52.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN main.OBJ
+COMPILER INVOKED BY: D:\Keil\C51\BIN\C51.EXE main.c BROWSE DEBUG OBJECTEXTEND TABS(2)
+
+line level    source
+
+   1          /***********************************************************************
+   2          *@program:Wilderness Hunter Game
+   3          *@author:Gannan Normal University ZhiBin Qiu
+   4          *@date:2023-12-01
+   5          *@version:1.0
+   6          ************************************************************************/
+   7          #include <reg52.h>
+   8          #include <intrins.h>
+   9          #include <string.h>
+  10          #include <stdio.h>
+  11          #include <stdlib.h>
+  12          //define area
+  13          #define RS_CLR RS=0
+  14          #define RS_SET RS=1
+  15          #define RW_CLR RW=0
+  16          #define RW_SET RW=1
+  17          #define EN_CLR EN=0
+  18          #define EN_SET EN=1
+  19          #define DataPort P0
+  20          
+  21          sbit RS = P1 ^ 0;
+  22          sbit RW = P1 ^ 1;
+  23          sbit EN = P2 ^ 5;
+  24          sbit DU = P2 ^ 0;
+  25          sbit WE = P2 ^ 1;
+  26          sbit k2 = P3 ^ 4;
+  27          sbit k3 = P3 ^ 5;
+  28          sbit k4 = P3 ^ 6;
+  29          sbit k5 = P3 ^ 7;
+  30          
+  31          unsigned char code cdis1[] = {"--Wild  Hunter--"};
+  32          unsigned char code cdis2[] = {"-let's gaming !-"};
+  33          unsigned char code cdis3[] = {"start:k4 back:k5"};
+  34          unsigned char code cdis4[] = {"-thanks for playing--thanks for playing-"};
+  35          unsigned char code cdis5[] = {"(=^_^=) (=^_^=) (=^_^=) (=^_^=) (=^_^=) "};
+  36          unsigned char code cdis6[] = {"S:              "};
+  37          unsigned char code cdis7[] = {"L:              "};
+  38          unsigned char code cdis8[] = {"                "};
+  39          unsigned char code cdis9[] = {"EASY:K4  HARD:K5"};
+  40          unsigned char  place[2] = {0,0};
+  41          unsigned char map[2][8] ={{' ',' ',' ',' ',' ',' ',' ',' '},{' ',' ',' ',' ',' ',' ',' ',' '}};
+  42          
+  43          
+  44          //辅助变量
+  45          unsigned char countK2 = 0;
+  46          unsigned char countK3 = 0;
+  47          unsigned char countK4 = 0;
+  48          unsigned char countK5 = 0;
+  49          unsigned char count;
+  50          unsigned char T;
+  51          unsigned char isfind=0;
+  52          unsigned char row;
+  53          unsigned char col;
+  54          unsigned char score=0;
+  55          char difficulty = 0;
+C51 COMPILER V9.52.0.0   MAIN                                                              12/09/2023 09:11:33 PAGE 2   
+
+  56          //declare functions
+  57          void cmg88()
+  58          { 
+  59   1        //关闭数码管，点阵函数
+  60   1        DU = 1;
+  61   1        P0=0x00;
+  62   1        DU =0;
+  63   1      }
+  64          
+  65          void DelayUs2x(unsigned char t)
+  66          {
+  67   1        while(t--);
+  68   1      }
+  69          
+  70          void DelayMs(unsigned int t)
+  71          {
+  72   1        while(t--)
+  73   1        {
+  74   2          //大致延时1ms
+  75   2          DelayUs2x(245);
+  76   2          DelayUs2x(245);
+  77   2        }
+  78   1      }
+  79          
+  80          //判忙函数
+  81          bit LCD_Check_Busy()
+  82          {
+  83   1        DataPort = 0xff;
+  84   1        RS_CLR;   //命令
+  85   1        RW_SET;   //读
+  86   1        EN_CLR; //使不能
+  87   1        _nop_();  //空等一个机器周期
+  88   1        EN_SET; //使能
+  89   1        return (bit)(DataPort & 0x80); //1000 0000
+  90   1      }
+  91          
+  92          
+  93          
+  94          
+  95          //写命令函数
+  96          void LCD_Write_Com(unsigned char com)
+  97          {
+  98   1        while(LCD_Check_Busy()){}
+  99   1        RS_CLR; //命令
+ 100   1        RW_CLR; //写
+ 101   1        EN_SET; //使能
+ 102   1        DataPort = com; //写入数据
+ 103   1        _nop_();  
+ 104   1        EN_CLR;
+ 105   1      }
+ 106          
+ 107          //写入数据函数
+ 108          void LCD_Write_Data(unsigned char Data)
+ 109          {
+ 110   1        while(LCD_Check_Busy()){}
+ 111   1          RS_SET; //数据
+ 112   1          RW_CLR; //写
+ 113   1          EN_SET; //使能
+ 114   1          DataPort = Data;
+ 115   1          _nop_();
+ 116   1          EN_CLR;
+ 117   1      }
+C51 COMPILER V9.52.0.0   MAIN                                                              12/09/2023 09:11:33 PAGE 3   
+
+ 118          
+ 119          //清屏函数
+ 120          void LCD_Clear()
+ 121          {
+ 122   1        LCD_Write_Com(0x01);
+ 123   1        DelayMs(5);
+ 124   1      }
+ 125          
+ 126          void LCD_Write_String(unsigned char x,unsigned char y,unsigned char *s)
+ 127          {
+ 128   1        if(y==0)
+ 129   1        {
+ 130   2          LCD_Write_Com(0x80 + x);//表示第一行
+ 131   2        }
+ 132   1        else
+ 133   1        {
+ 134   2          LCD_Write_Com(0xc0 + x);//表示第二行
+ 135   2        }
+ 136   1        while(*s)
+ 137   1        {
+ 138   2          LCD_Write_Data(*s);
+ 139   2          s++;
+ 140   2          //DelayMs(500);
+ 141   2        }
+ 142   1      }
+ 143          
+ 144          void LCD_Write_Char(unsigned char x,unsigned char y,unsigned char Data)
+ 145          {
+ 146   1        if(y==0)
+ 147   1        {
+ 148   2          LCD_Write_Com(0x80+x);
+ 149   2        }
+ 150   1        else
+ 151   1        {
+ 152   2          LCD_Write_Com(0xc0+x);
+ 153   2        }
+ 154   1        LCD_Write_Data(Data);
+ 155   1      }
+ 156          
+ 157          void LCD_init()
+ 158          {
+ 159   1        LCD_Write_Com(0x38);
+ 160   1        //显示模式
+ 161   1        DelayMs(5);
+ 162   1        LCD_Write_Com(0x38);
+ 163   1        DelayMs(5);
+ 164   1        LCD_Write_Com(0x38);
+ 165   1        DelayMs(5);
+ 166   1        LCD_Write_Com(0x38);
+ 167   1        LCD_Write_Com(0x08);//关闭显示
+ 168   1        LCD_Write_Com(0x01);//显示清屏
+ 169   1        LCD_Write_Com(0x06);//显示光标移动位置
+ 170   1        DelayMs(5);
+ 171   1        LCD_Write_Com(0x0c);//显示开及光标设置
+ 172   1        
+ 173   1      }
+ 174          
+ 175          void gameLevels()
+ 176          {
+ 177   1        
+ 178   1        do
+ 179   1        {
+C51 COMPILER V9.52.0.0   MAIN                                                              12/09/2023 09:11:33 PAGE 4   
+
+ 180   2          place[0] = rand()%2;    //行
+ 181   2        }while(place[0]==row);
+ 182   1        
+ 183   1        do
+ 184   1        {
+ 185   2          place[1] = 8 + rand()%8;   //列
+ 186   2        }while(place[1]==col);
+ 187   1        
+ 188   1      }
+ 189          
+ 190          
+ 191          void keyScan()
+ 192          {
+ 193   1        char i=row,j=col;
+ 194   1        char isPress=0;
+ 195   1        if(k2==0)
+ 196   1        { 
+ 197   2          row=0;
+ 198   2          isPress=1;
+ 199   2        }
+ 200   1        else if(k3==0)
+ 201   1        { 
+ 202   2          row=1;
+ 203   2          isPress=1;
+ 204   2        }
+ 205   1        else if(k4==0)
+ 206   1        {
+ 207   2          while(k4==0);
+ 208   2          col--;
+ 209   2          if(col<8)
+ 210   2            col=8;
+ 211   2          isPress=1;
+ 212   2        }
+ 213   1        else if(k5==0)
+ 214   1        {
+ 215   2          while(k5==0);
+ 216   2          col++;
+ 217   2          if(col>15)
+ 218   2            col=15;
+ 219   2          isPress=1;
+ 220   2        }
+ 221   1        //写入数据
+ 222   1        if(isPress==1)
+ 223   1        {
+ 224   2         LCD_Write_Char(j,i,' ');
+ 225   2         LCD_Write_Char(col,row,'H');
+ 226   2        }
+ 227   1        if(row == place[0] && col == place[1])
+ 228   1        {
+ 229   2          TR0 = 0; //关闭定时器
+ 230   2          isfind = 1;
+ 231   2          LCD_Write_String(8,0,"You win!");
+ 232   2          LCD_Write_String(8,1,"  next  ");
+ 233   2          score++;
+ 234   2          LCD_Write_Char(2,1,score/10+48);
+ 235   2          LCD_Write_Char(3,1,score%10+48);
+ 236   2          DelayMs(500);
+ 237   2        }
+ 238   1        
+ 239   1      }
+ 240          
+ 241          void clearKs()
+C51 COMPILER V9.52.0.0   MAIN                                                              12/09/2023 09:11:33 PAGE 5   
+
+ 242          {
+ 243   1        //上下左右键重置
+ 244   1        row=0;
+ 245   1        col=8;
+ 246   1      }
+ 247          
+ 248          void genMole()
+ 249          { 
+ 250   1        int i,j;
+ 251   1        gameLevels();
+ 252   1        //映射到lcd1602
+ 253   1        for(i=0;i<2;i++)
+ 254   1          for(j=8;j<=15;j++)
+ 255   1          {
+ 256   2            if(i==place[0] && j==place[1])
+ 257   2                LCD_Write_Char(j,i,'P');
+ 258   2            else
+ 259   2              LCD_Write_Char(j,i,' ');
+ 260   2          }
+ 261   1        //保持狩猎者位置
+ 262   1        LCD_Write_Char(col,row,'H');
+ 263   1      }
+ 264          
+ 265          void gamePlay()
+ 266          {
+ 267   1        int i; 
+ 268   1        LCD_Write_String(0,1,cdis9);
+ 269   1        while(1)
+ 270   1        {
+ 271   2          if(k4 == 0)
+ 272   2          {
+ 273   3            while(k4 == 0);
+ 274   3            difficulty = 0;
+ 275   3            break;
+ 276   3          }
+ 277   2          else if(k5 == 0)
+ 278   2          {
+ 279   3            while(k5 == 0);
+ 280   3            difficulty = 1;
+ 281   3            break;
+ 282   3          }
+ 283   2        }
+ 284   1        LCD_Write_String(0,0,"Are you ready ? ");
+ 285   1        LCD_Write_String(0,1,cdis8);
+ 286   1        for(i='3';i>='1';i--)
+ 287   1        {
+ 288   2          LCD_Write_Char(7,1,i);
+ 289   2          DelayMs(500);
+ 290   2        }
+ 291   1        LCD_Clear();    //清屏
+ 292   1        LCD_Write_String(0,0,cdis7);
+ 293   1        LCD_Write_String(0,1,cdis6);
+ 294   1        LCD_Write_Char(2,1,'0');
+ 295   1        LCD_Write_Char(3,1,'0');
+ 296   1        //设置倒计时
+ 297   1        LCD_Write_Char(6,0,'T');
+ 298   1        //重置按键
+ 299   1          clearKs();
+ 300   1        //游戏开始
+ 301   1        for(i=1;;i++)
+ 302   1        { 
+ 303   2          //显示level
+C51 COMPILER V9.52.0.0   MAIN                                                              12/09/2023 09:11:33 PAGE 6   
+
+ 304   2          LCD_Write_Char(2,0,i/10+48);
+ 305   2          LCD_Write_Char(3,0,i%10+48);
+ 306   2          //生成随机数，模拟地鼠出现位置
+ 307   2          srand(rand());
+ 308   2          genMole();
+ 309   2          
+ 310   2          //定时器设置
+ 311   2          count =0;
+ 312   2          T = 5;
+ 313   2          TMOD = 0X01;
+ 314   2          TH0 = 0X4C;
+ 315   2          TL0 = 0X00; //计时50ms
+ 316   2          EA = 1; // 全局中断开 
+ 317   2          ET0 = 1; //定时器0中断开
+ 318   2          TR0 = 1;  //开始计时
+ 319   2          //重置isfind
+ 320   2          isfind =0;
+ 321   2          LCD_Write_Char(6,1,T+48);
+ 322   2          while(T>0)
+ 323   2          { 
+ 324   3            if(isfind == 1)
+ 325   3            {
+ 326   4              break;  
+ 327   4            }
+ 328   3            keyScan();
+ 329   3          }
+ 330   2          if(T<=0)
+ 331   2          {
+ 332   3            TR0=0;  //关闭定时器
+ 333   3            LCD_Write_String(8,0,"You lose");
+ 334   3            LCD_Write_String(8,1,"  over  "); 
+ 335   3            // 重置分数
+ 336   3            score = 0;
+ 337   3            DelayMs(500);
+ 338   3            break;
+ 339   3          }
+ 340   2            
+ 341   2        }
+ 342   1      }
+ 343          
+ 344          void main()
+ 345          { 
+ 346   1        int i;
+ 347   1        cmg88();
+ 348   1        //关闭数码管，点阵函数
+ 349   1        LCD_init();
+ 350   1        LCD_Clear();    //清屏
+ 351   1        LCD_Write_String(0,0,"--Wild  Hunter--");
+ 352   1        for(i=0;i<16;i++)
+ 353   1        {
+ 354   2          LCD_Write_Char(i,1,cdis2[i]);
+ 355   2          DelayMs(60);
+ 356   2        }
+ 357   1        DelayMs(200);
+ 358   1        LCD_Write_String(0,1,cdis3);
+ 359   1        while(1)
+ 360   1        {
+ 361   2          if(k4 == 0)
+ 362   2          {
+ 363   3            while(k4 == 0);   //软件防抖
+ 364   3              gamePlay();
+ 365   3            DelayMs(1000);
+C51 COMPILER V9.52.0.0   MAIN                                                              12/09/2023 09:11:33 PAGE 7   
+
+ 366   3            LCD_Clear();    //清屏
+ 367   3            LCD_Write_String(0,0,"--Wild  Hunter--");
+ 368   3            for(i=0;i<16;i++)
+ 369   3            {
+ 370   4              LCD_Write_Char(i,1,cdis2[i]);
+ 371   4              DelayMs(60);
+ 372   4            }
+ 373   3            DelayMs(200);
+ 374   3            LCD_Write_String(0,1,cdis3);
+ 375   3          }
+ 376   2          else if(k5 == 0)
+ 377   2          { 
+ 378   3            while(k5 == 0);   //软件防抖
+ 379   3            LCD_Clear();    //清屏
+ 380   3            DelayMs(300);
+ 381   3            LCD_Write_String(0,0,cdis5);
+ 382   3            LCD_Write_String(0,1,cdis4);
+ 383   3            DelayMs(300);
+ 384   3            while(1)
+ 385   3            {
+ 386   4              LCD_Write_Com(0x18);//滚动显示
+ 387   4              DelayMs(350);
+ 388   4            }
+ 389   3          }
+ 390   2        }
+ 391   1        while(1);
+ 392   1        
+ 393   1        
+ 394   1      }
+ 395            
+ 396          void time0() interrupt 1
+ 397          {
+ 398   1         if(count<=20)
+ 399   1           count++;
+ 400   1         else
+ 401   1         {
+ 402   2           T--;
+ 403   2           if((T == 3 || T == 1) && difficulty == 1)
+ 404   2             genMole();
+ 405   2           LCD_Write_Char(6,1,T+48);
+ 406   2          count = 0;
+ 407   2          TH0 = 0X4C;
+ 408   2          TL0 = 0X00; //计时50ms
+ 409   2          EA = 1; // 全局中断开 
+ 410   2          ET0 = 1; //定时器0中断开
+ 411   2          TR0 = 1;  //开始计时
+ 412   2         }
+ 413   1      }
+ 414            
+ 415            
+ 416            
+ 417            
+ 418            
+ 419          
+ 420          
+ 421          
+ 422          
+ 423          
+ 424          
+ 425          
+ 426          
+ 427          
+C51 COMPILER V9.52.0.0   MAIN                                                              12/09/2023 09:11:33 PAGE 8   
+
+ 428          
+ 429          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   1121    ----
+   CONSTANT SIZE    =    271    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     29       6
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
